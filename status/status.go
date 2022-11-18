@@ -12,8 +12,9 @@ var (
 )
 
 const (
-	Start  = "start"
-	AddNFT = "add nft"
+	Start      = "start"
+	AddNFT     = "add nft"
+	ConfirmNFT = "confirm nft"
 )
 
 // 初始化日志

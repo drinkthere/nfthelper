@@ -4,21 +4,20 @@ import (
 	tgBot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"nfthelper/controller"
 	"nfthelper/logger"
+	"strings"
 )
 
 type Router struct {
-	startController *controller.StartController
-	nftController   *controller.NFTController
+	commonController *controller.CommonController
+	nftController    *controller.NFTController
 }
 
 func (r *Router) Init(botAPI *tgBot.BotAPI) {
-	r.startController = &controller.StartController{
-		TgBotAPI: botAPI,
-	}
+	r.commonController = new(controller.CommonController)
+	r.commonController.Init(botAPI)
 
-	r.nftController = &controller.NFTController{
-		TgBotAPI: botAPI,
-	}
+	r.nftController = new(controller.NFTController)
+	r.nftController.Init(botAPI)
 }
 
 func (r *Router) Route(update tgBot.Update) {
@@ -40,16 +39,27 @@ func (r *Router) Route(update tgBot.Update) {
 }
 
 func (r *Router) RouteCallback(callbackQuery *tgBot.CallbackQuery) {
-	switch callbackQuery.Data {
-	case "Cancel Add":
+	dataSlice := strings.Split(callbackQuery.Data, "`")
+	data := dataSlice[0]
+	logger.Info("[callback] data is %s", data)
+	switch data {
+	case "Cancel adding NFT before inputting", "Cancel adding NFT after inputting":
 		r.nftController.Cancel(callbackQuery)
+	case "Confirm adding NFT":
+		r.nftController.Confirm(callbackQuery)
+	case "➕ Add":
+		callbackQuery.Message.From.ID = callbackQuery.From.ID
+		r.nftController.Add(callbackQuery.Message)
 	}
+
 }
 
 func (r *Router) RouteCommand(message *tgBot.Message) {
 	switch message.Command() {
 	case "start":
-		r.startController.Handle(message)
+		r.commonController.Start(message)
+	case "menu":
+		r.commonController.Menu(message)
 	}
 	//
 	//if commandController, ok := controller.CommandControllersMap[message.Command()]; ok {
@@ -62,8 +72,12 @@ func (r *Router) RouteCommand(message *tgBot.Message) {
 }
 
 func (r *Router) RouteText(message *tgBot.Message) {
-	switch message.Text {
+	dataSlice := strings.Split(message.Text, "`")
+	data := dataSlice[0]
+	switch data {
 	case "➕ Add":
 		r.nftController.Add(message)
+	default:
+		r.nftController.Search(message)
 	}
 }
