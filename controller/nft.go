@@ -22,7 +22,7 @@ func (c *NFTController) Init(botAPI *tgBot.BotAPI) {
 	c.collectionService = new(service.CollectionService)
 }
 
-func (c *NFTController) Add(message *tgBot.Message) {
+func (c *NFTController) AddNFT(message *tgBot.Message) {
 	logger.Info("[command|add] handling, message is %+v", message)
 	// todo 获取用户plan和已订阅数，如果超过了plan的最大订阅数，则返回edit或者update的inlineKeyword， message.From.ID
 
@@ -38,13 +38,13 @@ func (c *NFTController) Add(message *tgBot.Message) {
 	)
 	msg.ReplyMarkup = inlineKeyboard
 	if _, err := c.TgBotAPI.Send(msg); err != nil {
-		logger.Error("[command|add] send message err, %v", err)
+		logger.Error("[command|add nft] send message err, %v", err)
 		return
 	}
 	status.SetIndicator(message.From.ID, status.AddNFT)
 }
 
-func (c *NFTController) Search(message *tgBot.Message) {
+func (c *NFTController) SearchNFT(message *tgBot.Message) {
 	indicator := status.GetIndicator(message.From.ID)
 	logger.Info("in search the indicator is %s, user id is %d", indicator, message.From.ID)
 	// logger.Info("[text|search] handling, message is %+v", message)
@@ -95,7 +95,7 @@ func (c *NFTController) Search(message *tgBot.Message) {
 			msg.ReplyMarkup = inlineKeyboard
 		}
 		if _, err := c.TgBotAPI.Send(msg); err != nil {
-			logger.Error("[command|search] send message err, %v", err)
+			logger.Error("[text|search nft] send message err, %v", err)
 			return
 		}
 		status.SetIndicator(message.From.ID, status.ConfirmNFT)
@@ -125,15 +125,15 @@ func (c *NFTController) Cancel(callbackQuery *tgBot.CallbackQuery) {
 	status.SetIndicator(callbackQuery.From.ID, status.Start)
 }
 
-func (c *NFTController) Confirm(callbackQuery *tgBot.CallbackQuery) {
-	logger.Info("[callback|confirm] handling, message is %s", callbackQuery.Data)
+func (c *NFTController) ConfirmAddingNFT(callbackQuery *tgBot.CallbackQuery) {
+	logger.Info("[callback|confirm adding nft] handling, message is %s", callbackQuery.Data)
 	//indicator := status.GetIndicator(callbackQuery.From.ID)
 	//logger.Info("in add the indicator is %s, user id is %d", indicator, callbackQuery.From.ID)
 	if status.GetIndicator(callbackQuery.From.ID) != status.ConfirmNFT {
 		// 如果不是在添加NFT的时候，用户输入内容无效
 		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, I don't understand. Please use /menu")
 		if _, err := c.TgBotAPI.Send(msg); err != nil {
-			logger.Error("[text|search] send message err, %v", err)
+			logger.Error("[callback|confirm adding nft] send message err, %v", err)
 			return
 		}
 		status.SetIndicator(callbackQuery.From.ID, status.Start)
@@ -142,7 +142,7 @@ func (c *NFTController) Confirm(callbackQuery *tgBot.CallbackQuery) {
 
 	collectionIDStr := strings.Split(callbackQuery.Data, "`")[1]
 	collectionID, _ := strconv.ParseInt(collectionIDStr, 10, 64)
-	logger.Info("[callback|confirm] collection ID is %d", collectionID)
+	logger.Info("[callback|confirm adding nft] collection ID is %d", collectionID)
 
 	collection := c.collectionService.GetCollectionByID(collectionID)
 	// todo 数据库存储
@@ -151,7 +151,7 @@ func (c *NFTController) Confirm(callbackQuery *tgBot.CallbackQuery) {
 	// 发送inline button
 	inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
 		tgBot.NewInlineKeyboardRow(
-			tgBot.NewInlineKeyboardButtonData("🔧 Edit "+collection.Name, "Edit "+collection.Name+"`"+fmt.Sprint(collection.ID)),
+			tgBot.NewInlineKeyboardButtonData("🗑️ Delete "+collection.Name, "Delete NFT`"+fmt.Sprint(collection.ID)),
 		),
 		tgBot.NewInlineKeyboardRow(
 			tgBot.NewInlineKeyboardButtonData("➕ Add more to main", "➕ Add"),
@@ -159,7 +159,78 @@ func (c *NFTController) Confirm(callbackQuery *tgBot.CallbackQuery) {
 	)
 	msg.ReplyMarkup = inlineKeyboard
 	if _, err := c.TgBotAPI.Send(msg); err != nil {
-		logger.Error("[callback|confirm] send message err, %v", err)
+		logger.Error("[callback|confirm adding nft] send message err, %v", err)
+		return
+	}
+	status.SetIndicator(callbackQuery.From.ID, status.Start)
+
+	return
+}
+
+func (c *NFTController) EditNFT(callbackQuery *tgBot.CallbackQuery) {
+	logger.Info("[callback|edit nft] handling, message is %s", callbackQuery.Data)
+}
+
+func (c *NFTController) DeleteNFT(callbackQuery *tgBot.CallbackQuery) {
+	logger.Info("[callback|delete nft] handling, message is %s", callbackQuery.Data)
+
+	collectionIDStr := strings.Split(callbackQuery.Data, "`")[1]
+	collectionID, _ := strconv.ParseInt(collectionIDStr, 10, 64)
+	collection := c.collectionService.GetCollectionByID(collectionID)
+	logger.Info("[callback|delete nft] collection ID is %d, collection is %+v", collectionID, collection)
+
+	msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Do you want to remove token <b>"+collection.Name+"</b>?\n\n")
+	msg.ParseMode = tgBot.ModeHTML
+	// 发送inline button
+	inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+		tgBot.NewInlineKeyboardRow(
+			tgBot.NewInlineKeyboardButtonData("🗑️ Delete", "Confirm deleting NFT`"+fmt.Sprint(collection.ID)),
+			tgBot.NewInlineKeyboardButtonData("❌ Cancel", "Cancel deleting NFT"),
+		),
+	)
+	msg.ReplyMarkup = inlineKeyboard
+	if _, err := c.TgBotAPI.Send(msg); err != nil {
+		logger.Error("[callback|delete nft] send message err, %v", err)
+		return
+	}
+	status.SetIndicator(callbackQuery.From.ID, status.DeleteNFT)
+}
+
+func (c *NFTController) ConfirmDeleteNFT(callbackQuery *tgBot.CallbackQuery) {
+	logger.Info("[callback|confirm deleting nft] handling, message is %s", callbackQuery.Data)
+	//indicator := status.GetIndicator(callbackQuery.From.ID)
+	//logger.Info("in add the indicator is %s, user id is %d", indicator, callbackQuery.From.ID)
+	if status.GetIndicator(callbackQuery.From.ID) != status.DeleteNFT {
+		// 如果不是在添加NFT的时候，用户输入内容无效
+		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, I don't understand. Please use /menu")
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[text|confirm deleting nft] send message err, %v", err)
+			return
+		}
+		status.SetIndicator(callbackQuery.From.ID, status.Start)
+		return
+	}
+
+	collectionIDStr := strings.Split(callbackQuery.Data, "`")[1]
+	collectionID, _ := strconv.ParseInt(collectionIDStr, 10, 64)
+	collection := c.collectionService.GetCollectionByID(collectionID)
+	logger.Info("[callback|confirm deleting nft] collection ID is %d, collection is %+v", collectionID, collection)
+
+	// todo 数据库删除订阅
+
+	msg := tgBot.NewDeleteMessage(callbackQuery.Message.Chat.ID, callbackQuery.Message.MessageID)
+	if _, err := c.TgBotAPI.Send(msg); err != nil {
+		if err.Error() == "json: cannot unmarshal bool into Go value of type tgbotapi.Message" {
+			status.SetIndicator(callbackQuery.From.ID, status.Start)
+		} else {
+			logger.Error("[callback|confirm deleting nft, delete msg] send message err, %v", err)
+		}
+	}
+
+	textMsg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "<b>"+collection.Name+"</b> has been successfully removed from your watchlist")
+	textMsg.ParseMode = tgBot.ModeHTML
+	if _, err := c.TgBotAPI.Send(textMsg); err != nil {
+		logger.Error("[callback|confirm deleting nft] send message err, %v", err)
 		return
 	}
 	status.SetIndicator(callbackQuery.From.ID, status.Start)
