@@ -59,12 +59,15 @@ func (r *Router) RouteCallback(callbackQuery *tgBot.CallbackQuery) {
 	case "➕ Add":
 		callbackQuery.Message.From.ID = callbackQuery.From.ID
 		r.nftController.AddNFT(callbackQuery.Message)
+	case "Edit NFTs":
+		callbackQuery.Message.From.ID = callbackQuery.From.ID
+		r.nftController.EditNFTs(callbackQuery)
 	case "Delete NFT":
 		callbackQuery.Message.From.ID = callbackQuery.From.ID
 		r.nftController.DeleteNFT(callbackQuery)
 	case "Confirm deleting NFT":
 		r.nftController.ConfirmDeleteNFT(callbackQuery)
-	case "🛎️ Choose subscription plan":
+	case "🛎️ Choose subscription plan", "🛎️ Upgrade subscription plan":
 		r.subscriptionController.ListSubscription(callbackQuery)
 	case "Choose subscription":
 		r.subscriptionController.ChooseSubscription(callbackQuery)

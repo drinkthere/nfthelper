@@ -13,8 +13,9 @@ import (
 )
 
 type NFTController struct {
-	TgBotAPI          *tgBot.BotAPI
-	collectionService *service.CollectionService
+	TgBotAPI            *tgBot.BotAPI
+	collectionService   *service.CollectionService
+	subscriptionService *service.SubscriptionService
 }
 
 func (c *NFTController) Init(botAPI *tgBot.BotAPI) {
@@ -43,7 +44,6 @@ func (c *NFTController) ListNFT(message *tgBot.Message) {
 	} else {
 		// 用户已订阅就展示用户定义的NFT
 		var options []tgBot.InlineKeyboardButton
-		var optionsRow [][]tgBot.InlineKeyboardButton
 
 		text := "Your watchlist:\n"
 		for index, collection := range collections {
@@ -53,14 +53,7 @@ func (c *NFTController) ListNFT(message *tgBot.Message) {
 			options = append(options, option)
 		}
 		// 分成多行
-		numPerRow := 5
-		for i := 0; i <= len(options)/numPerRow; i += 1 {
-			start := i * numPerRow
-			end := (i + 1) * numPerRow
-			end = common.Min(end, len(options))
-			opts := options[start:end]
-			optionsRow = append(optionsRow, opts)
-		}
+		optionsRow := splitToMultiRows(5, options)
 		text += "\nClick to see latest announcement:"
 		msg := tgBot.NewMessage(message.Chat.ID, text)
 		msg.ParseMode = tgBot.ModeHTML
@@ -79,9 +72,36 @@ func (c *NFTController) ListNFT(message *tgBot.Message) {
 
 func (c *NFTController) AddNFT(message *tgBot.Message) {
 	logger.Info("[command|add nft] handling, message is %s", message.Text)
-	// todo 获取用户plan和已订阅数，如果超过了plan的最大订阅数，则返回edit或者update的inlineKeyword， message.From.ID
 
-	// 发送onboard 信息
+	// 获取用户的subscription方案
+	subscription := c.subscriptionService.GetByUserID(message.From.ID)
+
+	collections := c.collectionService.ListByUserID(message.From.ID)
+	if len(collections) >= subscription.MaxNFT {
+		// 提示用户 删除 或 更新 subscription 方案
+		text := fmt.Sprintf("⚠️ ️You have reached <b>%d NFTs</b> limits:\n\n"+
+			"🖼️️ <b>NFT</b> %d/%d ⚠️\n\n"+
+			"<b>Edit NFTs</b> or <b>Upgrade</b> your Subscription Plan", subscription.MaxNFT, len(collections), subscription.MaxNFT)
+		msg := tgBot.NewMessage(message.Chat.ID, text)
+		msg.ParseMode = tgBot.ModeHTML
+		// 发送inline button
+		inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+			tgBot.NewInlineKeyboardRow(
+				tgBot.NewInlineKeyboardButtonData("Edit NFTs", "Edit NFTs"),
+			),
+			tgBot.NewInlineKeyboardRow(
+				tgBot.NewInlineKeyboardButtonData("🛎️ Upgrade subscription plan", "🛎️ Upgrade subscription plan"),
+			),
+		)
+		msg.ReplyMarkup = inlineKeyboard
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[command|add nft] send message err, %v", err)
+			return
+		}
+		return
+	}
+
+	// 发送add信息
 	text := "Enter NFT <b>token name</b> (e.g Azuki) or <b>contract address</b> (Ethereum network only):"
 	msg := tgBot.NewMessage(message.Chat.ID, text)
 	msg.ParseMode = tgBot.ModeHTML
@@ -214,8 +234,29 @@ func (c *NFTController) ConfirmAddingNFT(callbackQuery *tgBot.CallbackQuery) {
 	return
 }
 
-func (c *NFTController) EditNFT(callbackQuery *tgBot.CallbackQuery) {
-	logger.Info("[callback|edit nft] handling, message is %s", callbackQuery.Data)
+func (c *NFTController) EditNFTs(callbackQuery *tgBot.CallbackQuery) {
+	logger.Info("[callback|edit nfts] handling, message is %s", callbackQuery.Data)
+	collections := c.collectionService.ListByUserID(callbackQuery.From.ID)
+	// 发送list 信息
+	msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Select NFT to <b>delete</b>:\n\n")
+	msg.ParseMode = tgBot.ModeHTML
+
+	// 发送inline button
+	var options []tgBot.InlineKeyboardButton
+	for _, collection := range collections {
+		option := tgBot.NewInlineKeyboardButtonData(fmt.Sprintf("Delete %s", collection.Name), "Delete NFT`"+fmt.Sprint(collection.ID))
+		options = append(options, option)
+	}
+	// 分成多行
+	optionsRow := splitToMultiRows(1, options)
+	inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+		optionsRow...,
+	)
+	msg.ReplyMarkup = inlineKeyboard
+	if _, err := c.TgBotAPI.Send(msg); err != nil {
+		logger.Error("[callback|edit nfts] send message err, %v", err)
+		return
+	}
 }
 
 func (c *NFTController) DeleteNFT(callbackQuery *tgBot.CallbackQuery) {
@@ -280,7 +321,19 @@ func (c *NFTController) ConfirmDeleteNFT(callbackQuery *tgBot.CallbackQuery) {
 		logger.Error("[callback|confirm deleting nft] send message err, %v", err)
 		return
 	}
-	status.SetIndicator(callbackQuery.From.ID, status.Start)
 
+	// 发送更新之后的订阅信息给用户
+	c.ListNFT(callbackQuery.Message)
+	return
+}
+
+func splitToMultiRows(numPerRow int, options []tgBot.InlineKeyboardButton) (optionsRow [][]tgBot.InlineKeyboardButton) {
+	for i := 0; i <= len(options)/numPerRow; i += 1 {
+		start := i * numPerRow
+		end := (i + 1) * numPerRow
+		end = common.Min(end, len(options))
+		opts := options[start:end]
+		optionsRow = append(optionsRow, opts)
+	}
 	return
 }

@@ -11,15 +11,17 @@ import (
 )
 
 type SubscriptionController struct {
-	TgBotAPI       *tgBot.BotAPI
-	commonService  *service.CommonService
-	paymentService *service.PaymentService
+	TgBotAPI            *tgBot.BotAPI
+	subscriptionService *service.SubscriptionService
+	paymentService      *service.PaymentService
+	commonService       *service.CommonService
 }
 
 func (c *SubscriptionController) Init(botAPI *tgBot.BotAPI) {
 	c.TgBotAPI = botAPI
-	c.commonService = new(service.CommonService)
+	c.subscriptionService = new(service.SubscriptionService)
 	c.paymentService = new(service.PaymentService)
+	c.commonService = new(service.CommonService)
 }
 
 func (c *SubscriptionController) Subscription(message *tgBot.Message) {
@@ -52,49 +54,40 @@ func (c *SubscriptionController) Subscription(message *tgBot.Message) {
 }
 
 func (c *SubscriptionController) ListSubscription(callbackQuery *tgBot.CallbackQuery) {
-	if status.GetIndicator(callbackQuery.From.ID) != status.Subscription {
-		// 如果不是在添加NFT的时候，用户输入内容无效
-		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, I don't understand. Please use /menu")
-		if _, err := c.TgBotAPI.Send(msg); err != nil {
-			logger.Error("[callback|list subscription] send message err, %v", err)
-			return
-		}
-		status.SetIndicator(callbackQuery.From.ID, status.Start)
-	} else {
-		// 根据用户id获取当前plan
-		// current
-		text := "✅ <b>Basic</b><i>(Current Plan)</i>\n\n" +
-			"☑️️ Up to 5 NFTs"
-		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, text)
-		msg.ParseMode = tgBot.ModeHTML
-		if _, err := c.TgBotAPI.Send(msg); err != nil {
-			logger.Error("[command|list subscription:current] send message err, %v", err)
-			return
-		}
+	subscription := c.subscriptionService.GetByUserID(callbackQuery.From.ID)
 
-		subscriptions := c.commonService.ListSubscriptions()
-		for _, subscription := range subscriptions {
-			// advanced
-			text = fmt.Sprintf("💎️ <b>%s monthly</b>\n\n"+
-				"☑️️ Up to %d NFTs", subscription.Name, subscription.MaxNFT)
-			msg = tgBot.NewMessage(callbackQuery.Message.Chat.ID, text)
-			msg.ParseMode = tgBot.ModeHTML
-
-			// 发送inline button
-			inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
-				tgBot.NewInlineKeyboardRow(
-					tgBot.NewInlineKeyboardButtonData(fmt.Sprintf("Choose for $%.2f/month", subscription.Price), fmt.Sprintf("Choose subscription`%d", subscription.ID)),
-				),
-			)
-			msg.ReplyMarkup = inlineKeyboard
-
-			if _, err := c.TgBotAPI.Send(msg); err != nil {
-				logger.Error("[command|list subscription: %s] send message err, %v", subscription.Name, err)
-				return
-			}
-		}
-		status.SetIndicator(callbackQuery.From.ID, status.ListSubscription)
+	// current
+	text := fmt.Sprintf("✅ <b>%s</b><i>(Current Plan)</i>\n\n"+
+		"☑️️ Up to %d NFTs", subscription.Name, subscription.MaxNFT)
+	msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, text)
+	msg.ParseMode = tgBot.ModeHTML
+	if _, err := c.TgBotAPI.Send(msg); err != nil {
+		logger.Error("[command|list subscription:current] send message err, %v", err)
+		return
 	}
+
+	subscriptions := c.subscriptionService.List()
+	for _, subscription := range subscriptions {
+		// advanced
+		text = fmt.Sprintf("💎️ <b>%s monthly</b>\n\n"+
+			"☑️️ Up to %d NFTs", subscription.Name, subscription.MaxNFT)
+		msg = tgBot.NewMessage(callbackQuery.Message.Chat.ID, text)
+		msg.ParseMode = tgBot.ModeHTML
+
+		// 发送inline button
+		inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+			tgBot.NewInlineKeyboardRow(
+				tgBot.NewInlineKeyboardButtonData(fmt.Sprintf("Choose for $%.2f/month", subscription.Price), fmt.Sprintf("Choose subscription`%d", subscription.ID)),
+			),
+		)
+		msg.ReplyMarkup = inlineKeyboard
+
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[command|list subscription: %s] send message err, %v", subscription.Name, err)
+			return
+		}
+	}
+	status.SetIndicator(callbackQuery.From.ID, status.ListSubscription)
 }
 
 func (c *SubscriptionController) ChooseSubscription(callbackQuery *tgBot.CallbackQuery) {
@@ -193,7 +186,7 @@ func (c *SubscriptionController) ChooseNetwork(callbackQuery *tgBot.CallbackQuer
 		network := paramsStr[1]
 		currency := paramsStr[2]
 		subscriptionID, _ := strconv.ParseInt(paramsStr[3], 10, 64)
-		subscription := c.commonService.GetSubscription(subscriptionID)
+		subscription := c.subscriptionService.GetByID(subscriptionID)
 
 		paymentLink := c.paymentService.GeneratePaymentLink(network, currency, subscription.Price)
 		text := fmt.Sprintf("💎️ <b>%s monthly</b>\n\n"+
