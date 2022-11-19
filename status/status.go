@@ -16,7 +16,10 @@ const (
 	AddNFT           = "add nft"
 	ConfirmNFT       = "confirm nft"
 	DeleteNFT        = "delete nft"
-	ConfirmDeleteNFT = "confirm delete nft"
+	Subscription     = "subscription"
+	ListSubscription = "list subscription"
+	ChooseCurrency   = "choose currency"
+	ChooseNetwork    = "choose currency"
 )
 
 // 初始化日志

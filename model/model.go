@@ -12,4 +12,17 @@ type Collection struct {
 	Name    string
 	Address string
 	Price   float64
+	OsURL   string
+}
+
+type Subscription struct {
+	ID     int64
+	Name   string
+	Price  float64 // USD
+	MaxNFT int64   // max NFT support
+}
+
+type Announcement struct {
+	ID  int64
+	URL string
 }

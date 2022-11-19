@@ -4,15 +4,20 @@ import (
 	"fmt"
 	tgBot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"nfthelper/logger"
+	"nfthelper/service"
 	"nfthelper/status"
 )
 
 type CommonController struct {
-	TgBotAPI *tgBot.BotAPI
+	TgBotAPI       *tgBot.BotAPI
+	commonService  *service.CommonService
+	paymentService *service.PaymentService
 }
 
 func (c *CommonController) Init(botAPI *tgBot.BotAPI) {
 	c.TgBotAPI = botAPI
+	c.commonService = new(service.CommonService)
+	c.paymentService = new(service.PaymentService)
 }
 
 func (c *CommonController) Start(message *tgBot.Message) {
@@ -34,9 +39,9 @@ func (c *CommonController) Start(message *tgBot.Message) {
 			tgBot.NewKeyboardButton("➕ Add"),
 			tgBot.NewKeyboardButton("🖼 NFT"),
 		),
-		//tgBot.NewKeyboardButtonRow(
-		//	tgBot.NewKeyboardButton("🎛️ Subscription"),
-		//),
+		tgBot.NewKeyboardButtonRow(
+			tgBot.NewKeyboardButton("🛎️ Subscription"),
+		),
 	)
 	msg.ReplyMarkup = replyKeyboard
 

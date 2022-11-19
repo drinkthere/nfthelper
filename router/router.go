@@ -8,8 +8,10 @@ import (
 )
 
 type Router struct {
-	commonController *controller.CommonController
-	nftController    *controller.NFTController
+	commonController       *controller.CommonController
+	nftController          *controller.NFTController
+	subscriptionController *controller.SubscriptionController
+	announcementController *controller.AnnouncementController
 }
 
 func (r *Router) Init(botAPI *tgBot.BotAPI) {
@@ -18,6 +20,12 @@ func (r *Router) Init(botAPI *tgBot.BotAPI) {
 
 	r.nftController = new(controller.NFTController)
 	r.nftController.Init(botAPI)
+
+	r.subscriptionController = new(controller.SubscriptionController)
+	r.subscriptionController.Init(botAPI)
+
+	r.announcementController = new(controller.AnnouncementController)
+	r.announcementController.Init(botAPI)
 }
 
 func (r *Router) Route(update tgBot.Update) {
@@ -56,6 +64,16 @@ func (r *Router) RouteCallback(callbackQuery *tgBot.CallbackQuery) {
 		r.nftController.DeleteNFT(callbackQuery)
 	case "Confirm deleting NFT":
 		r.nftController.ConfirmDeleteNFT(callbackQuery)
+	case "🛎️ Choose subscription plan":
+		r.subscriptionController.ListSubscription(callbackQuery)
+	case "Choose subscription":
+		r.subscriptionController.ChooseSubscription(callbackQuery)
+	case "Choose currency":
+		r.subscriptionController.ChooseCurrency(callbackQuery)
+	case "Choose network":
+		r.subscriptionController.ChooseNetwork(callbackQuery)
+	case "Get NFT announcement":
+		r.announcementController.GetByCollectionIDAndUserID(callbackQuery)
 	}
 
 }
@@ -67,14 +85,6 @@ func (r *Router) RouteCommand(message *tgBot.Message) {
 	case "menu":
 		r.commonController.Menu(message)
 	}
-	//
-	//if commandController, ok := controller.CommandControllersMap[message.Command()]; ok {
-	//	logger.Info("[command] controller is %+v", commandController)
-	//	commandController.Handle(message, indicatorMap)
-	//} else {
-	//	defaultController, _ := controller.CommandControllersMap["default"]
-	//	defaultController.Handle(message, indicatorMap)
-	//}
 }
 
 func (r *Router) RouteText(message *tgBot.Message) {
@@ -83,6 +93,10 @@ func (r *Router) RouteText(message *tgBot.Message) {
 	switch data {
 	case "➕ Add":
 		r.nftController.AddNFT(message)
+	case "🛎️ Subscription":
+		r.subscriptionController.Subscription(message)
+	case "🖼 NFT":
+		r.nftController.ListNFT(message)
 	default:
 		r.nftController.SearchNFT(message)
 	}

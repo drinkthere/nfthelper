@@ -2,8 +2,8 @@ package controller
 
 import (
 	"fmt"
+	"nfthelper/common"
 	"nfthelper/logger"
-	"nfthelper/model"
 	"nfthelper/service"
 	"nfthelper/status"
 	"strconv"
@@ -22,8 +22,63 @@ func (c *NFTController) Init(botAPI *tgBot.BotAPI) {
 	c.collectionService = new(service.CollectionService)
 }
 
+func (c *NFTController) ListNFT(message *tgBot.Message) {
+	logger.Info("[command|list nft] handling, message is %s", message.Text)
+	collections := c.collectionService.ListByUserID(message.From.ID)
+	if collections == nil {
+		// 如果用户没有订阅NFT，就鼓励用户订阅
+		msg := tgBot.NewMessage(message.Chat.ID, "It's a great time to add your first NFT")
+
+		// 发送inline button
+		inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+			tgBot.NewInlineKeyboardRow(
+				tgBot.NewInlineKeyboardButtonData("Add NFT", "➕ Add"),
+			),
+		)
+		msg.ReplyMarkup = inlineKeyboard
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[command|list nft] send message err, %v", err)
+			return
+		}
+	} else {
+		// 用户已订阅就展示用户定义的NFT
+		var options []tgBot.InlineKeyboardButton
+		var optionsRow [][]tgBot.InlineKeyboardButton
+
+		text := "Your watchlist:\n"
+		for index, collection := range collections {
+			id := index + 1
+			text = text + fmt.Sprintf("<b>%d</b> %s\n", id, collection.Name)
+			option := tgBot.NewInlineKeyboardButtonData(fmt.Sprint(id), "Get NFT announcement`"+fmt.Sprint(collection.ID))
+			options = append(options, option)
+		}
+		// 分成多行
+		numPerRow := 5
+		for i := 0; i <= len(options)/numPerRow; i += 1 {
+			start := i * numPerRow
+			end := (i + 1) * numPerRow
+			end = common.Min(end, len(options))
+			opts := options[start:end]
+			optionsRow = append(optionsRow, opts)
+		}
+		text += "\nClick to see latest announcement:"
+		msg := tgBot.NewMessage(message.Chat.ID, text)
+		msg.ParseMode = tgBot.ModeHTML
+		// 发送inline button
+		inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+			optionsRow...,
+		)
+		msg.ReplyMarkup = inlineKeyboard
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[command|list nft] send message err, %v", err)
+			return
+		}
+	}
+	status.SetIndicator(message.From.ID, status.Start)
+}
+
 func (c *NFTController) AddNFT(message *tgBot.Message) {
-	logger.Info("[command|add] handling, message is %+v", message)
+	logger.Info("[command|add nft] handling, message is %s", message.Text)
 	// todo 获取用户plan和已订阅数，如果超过了plan的最大订阅数，则返回edit或者update的inlineKeyword， message.From.ID
 
 	// 发送onboard 信息
@@ -45,20 +100,16 @@ func (c *NFTController) AddNFT(message *tgBot.Message) {
 }
 
 func (c *NFTController) SearchNFT(message *tgBot.Message) {
-	indicator := status.GetIndicator(message.From.ID)
-	logger.Info("in search the indicator is %s, user id is %d", indicator, message.From.ID)
-	// logger.Info("[text|search] handling, message is %+v", message)
+	logger.Info("[text|search nft] handling, message is %s", message.Text)
+	//indicator := status.GetIndicator(message.From.ID)
+	//logger.Info("in search the indicator is %s, user id is %d", indicator, message.From.ID)
+
 	if status.GetIndicator(message.From.ID) == status.AddNFT {
 		var msg tgBot.MessageConfig
 		if strings.HasPrefix(message.Text, "0x") && len(message.Text) == 42 {
 			// 合约地址
 			// todo 按照合约地址搜索合约
-			collection := model.Collection{
-				ID:      1,
-				Name:    "Homa Gang - Valentine (Homa Gang - Valentine)",
-				Address: "0x6C869A43A9D362eF870d75daE56A01887578421d",
-				Price:   6.1,
-			}
+			collection := c.collectionService.GetByAddr(message.Text)
 			// 发送onboard 信息
 			msg = tgBot.NewMessage(message.Chat.ID, "<b>"+collection.Name+"</b>")
 			msg.ParseMode = tgBot.ModeHTML
@@ -74,11 +125,7 @@ func (c *NFTController) SearchNFT(message *tgBot.Message) {
 			var options []tgBot.InlineKeyboardButton
 
 			// todo 按照合约名称搜索合约
-			collections := []model.Collection{
-				{ID: 2, Name: "Azuki"},
-				{ID: 3, Name: "AzukiApeSocialClub"},
-				{ID: 4, Name: "OkayAzukis"},
-			}
+			collections := c.collectionService.Search(message.Text)
 			text := "Choose you NFT:\n"
 			for index, collection := range collections {
 				id := index + 1
@@ -103,7 +150,7 @@ func (c *NFTController) SearchNFT(message *tgBot.Message) {
 		// 如果不是在添加NFT的时候，用户输入内容无效
 		msg := tgBot.NewMessage(message.Chat.ID, "Sorry, I don't understand. Please use /menu")
 		if _, err := c.TgBotAPI.Send(msg); err != nil {
-			logger.Error("[text|search] send message err, %v", err)
+			logger.Error("[text|search nft] send message err, %v", err)
 			return
 		}
 		status.SetIndicator(message.From.ID, status.Start)
@@ -144,7 +191,7 @@ func (c *NFTController) ConfirmAddingNFT(callbackQuery *tgBot.CallbackQuery) {
 	collectionID, _ := strconv.ParseInt(collectionIDStr, 10, 64)
 	logger.Info("[callback|confirm adding nft] collection ID is %d", collectionID)
 
-	collection := c.collectionService.GetCollectionByID(collectionID)
+	collection := c.collectionService.GetByID(collectionID)
 	// todo 数据库存储
 
 	msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, collection.Name+" was added to Main watchlist!")
@@ -176,7 +223,7 @@ func (c *NFTController) DeleteNFT(callbackQuery *tgBot.CallbackQuery) {
 
 	collectionIDStr := strings.Split(callbackQuery.Data, "`")[1]
 	collectionID, _ := strconv.ParseInt(collectionIDStr, 10, 64)
-	collection := c.collectionService.GetCollectionByID(collectionID)
+	collection := c.collectionService.GetByID(collectionID)
 	logger.Info("[callback|delete nft] collection ID is %d, collection is %+v", collectionID, collection)
 
 	msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Do you want to remove token <b>"+collection.Name+"</b>?\n\n")
@@ -213,7 +260,7 @@ func (c *NFTController) ConfirmDeleteNFT(callbackQuery *tgBot.CallbackQuery) {
 
 	collectionIDStr := strings.Split(callbackQuery.Data, "`")[1]
 	collectionID, _ := strconv.ParseInt(collectionIDStr, 10, 64)
-	collection := c.collectionService.GetCollectionByID(collectionID)
+	collection := c.collectionService.GetByID(collectionID)
 	logger.Info("[callback|confirm deleting nft] collection ID is %d, collection is %+v", collectionID, collection)
 
 	// todo 数据库删除订阅

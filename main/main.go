@@ -50,6 +50,10 @@ func Init() {
 			Command:     "/start",
 			Description: "start to subscribe NFT announcement",
 		},
+		tgBot.BotCommand{
+			Command:     "/menu",
+			Description: "show menus",
+		},
 	)
 	_, err = botAPI.Request(commands)
 	if err != nil {
