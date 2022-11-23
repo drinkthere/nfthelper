@@ -6,7 +6,7 @@ type Subscription struct {
 	gorm.Model
 	Name   string  `gorm:"type:varchar(20) not null;unique"`
 	Price  float64 `gorm:"type:float"`
-	MaxNFT uint    // max NFT support
+	MaxNFT int     // max NFT support
 }
 
 type Collection struct {
@@ -27,4 +27,10 @@ type UserCollection struct {
 	gorm.Model
 	UserID       uint `gorm:"uniqueIndex:idx_user_col"`
 	CollectionID uint `gorm:"uniqueIndex:idx_user_col"`
+}
+
+type Announcement struct {
+	gorm.Model
+	CollectionID uint
+	URL          string `gorm:"unique"`
 }

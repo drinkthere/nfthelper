@@ -76,7 +76,7 @@ func (r *Router) RouteCallback(callbackQuery *tgBot.CallbackQuery) {
 	case "Choose network":
 		r.subscriptionController.ChooseNetwork(callbackQuery)
 	case "Get NFT announcement":
-		r.announcementController.GetByCollectionIDAndUserID(callbackQuery)
+		r.announcementController.GetByCollectionID(callbackQuery)
 	}
 
 }

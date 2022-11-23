@@ -21,15 +21,32 @@ func (c *AnnouncementController) Init(botAPI *tgBot.BotAPI) {
 	c.collectionService = new(service.CollectionService)
 }
 
-func (c *AnnouncementController) GetByCollectionIDAndUserID(callbackQuery *tgBot.CallbackQuery) {
-	logger.Info("[|subscription] handling, message is %s", callbackQuery.Data)
+func (c *AnnouncementController) GetByCollectionID(callbackQuery *tgBot.CallbackQuery) {
+	logger.Info("[callback|announcement] handling, message is %s", callbackQuery.Data)
 
 	userID := uint(callbackQuery.From.ID)
 	params := strings.Split(callbackQuery.Data, "`")
 	collectionID, _ := strconv.ParseUint(params[1], 10, 64)
-	collection := c.collectionService.GetByID(uint(collectionID))
-	announcements := c.announcementService.GetByCollectionIDAndUserID(uint(collectionID), userID)
 
+	// 判断用户是否订阅了这个collection
+	if !c.collectionService.HasAlreadyWatched(userID, uint(collectionID)) {
+		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, you haven't added this collection to your watchlist.")
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[callback|announcement] send message err, %v", err)
+		}
+		return
+	}
+
+	collection := c.collectionService.GetByID(uint(collectionID))
+	announcements := c.announcementService.ListByCollectionID(uint(collectionID))
+	if len(announcements) == 0 {
+		// 该项目没有发布过announcements
+		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, there is no announcements of "+collection.Name)
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[callback|announcement] send message err, %v", err)
+		}
+		return
+	}
 	for index, announcement := range announcements {
 		text := ""
 		if index == 0 {

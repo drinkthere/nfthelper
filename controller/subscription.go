@@ -15,31 +15,37 @@ type SubscriptionController struct {
 	subscriptionService *service.SubscriptionService
 	paymentService      *service.PaymentService
 	commonService       *service.CommonService
+	collectionService   *service.CollectionService
 }
 
 func (c *SubscriptionController) Init(botAPI *tgBot.BotAPI) {
 	c.TgBotAPI = botAPI
 	c.subscriptionService = new(service.SubscriptionService)
 	c.paymentService = new(service.PaymentService)
-	c.commonService = new(service.CommonService)
+	c.collectionService = new(service.CollectionService)
 }
 
 func (c *SubscriptionController) Subscription(message *tgBot.Message) {
 	logger.Info("[command|subscription] handling, message is %s", message.Text)
 
 	userID := uint(message.From.ID)
-	// todo 用户注册 message.From.ID
+	subscription := c.subscriptionService.GetByUserID(userID)
+	userCurrCollectionNum := c.collectionService.CountByUserID(userID)
 	// 如果有用户就获取用户的subscription信息
 	// 发送subscription 信息
-	text := "Your current subscription: ✅ <b>Basic</b>\n\n" +
-		"....................................\n\n" +
-		"🖼️️ <b>NFT</b> <i>3/5</i> ⚠️"
+	text := fmt.Sprintf("Your current subscription: ✅ <b>Basic</b>\n\n"+
+		"....................................\n\n"+
+		"🖼️️ <b>NFT</b> <i>%d/%d</i>", userCurrCollectionNum, subscription.MaxNFT)
+	if userCurrCollectionNum >= int64(subscription.MaxNFT) {
+		text += " ⚠️"
+	}
 	msg := tgBot.NewMessage(message.Chat.ID, text)
 	msg.ParseMode = tgBot.ModeHTML
 
 	// 发送inline button
 	inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
 		tgBot.NewInlineKeyboardRow(
+			tgBot.NewInlineKeyboardButtonData("🛎️ Choose subscription plan", "🛎️ Choose subscription plan"),
 			tgBot.NewInlineKeyboardButtonData("🛎️ Choose subscription plan", "🛎️ Choose subscription plan"),
 		),
 	)

@@ -4,30 +4,42 @@ import (
 	"fmt"
 	"nfthelper/database"
 	"nfthelper/logger"
-	"nfthelper/model"
 	"nfthelper/model/dbmodel"
 )
 
 type SubscriptionService struct {
 }
 
-func (s *SubscriptionService) List() []model.Subscription {
-	// todo 从redis中 获取subscription方案
-	return []model.Subscription{
-		{ID: 1, Name: "Advanced", MaxNFT: 100, Price: 9},
+func (s *SubscriptionService) List() (subscriptions []dbmodel.Subscription) {
+	msg := fmt.Sprintf("list subscriptions")
+	logger.Info(msg)
+
+	// list 订阅方案，不包含basic plan
+	result := database.DB.Where("id != ?", 1).Find(&subscriptions)
+	if result.Error != nil {
+		logger.Error("%s, error is %+v", msg, result.Error)
+		return
 	}
+	return
 }
 
-func (s *SubscriptionService) GetByID(id uint) model.Subscription {
-	return model.Subscription{
-		ID: 1, Name: "Advanced", MaxNFT: 100, Price: 9,
+func (s *SubscriptionService) GetByID(id uint) (subscription dbmodel.Subscription) {
+	msg := fmt.Sprintf("get subscription by id=%d", id)
+	logger.Info(msg)
+
+	// list 订阅方案，不包含basic plan
+	result := database.DB.Where("id=", 1).First(&subscription)
+	if result.Error != nil {
+		logger.Error("%s, error is %+v", msg, result.Error)
+		return
 	}
+	return
 }
 
-func (s *SubscriptionService) GetByUserID(uid uint) (subscription model.Subscription) {
+func (s *SubscriptionService) GetByUserID(uid uint) (subscription dbmodel.Subscription) {
 	msg := fmt.Sprintf("get user subscription uid=%d", uid)
 	logger.Info(msg)
-	var subscriptions []model.Subscription
+	var subscriptions []dbmodel.Subscription
 	result := database.DB.Table("user_subscription").Select("subscription.id, subscription.name, subscription.price, subscription.max_nft").Joins("left join subscription on user_subscription.subscription_id = subscription.id where user_id=?", uid).Scan(&subscriptions)
 	if result.Error != nil {
 		logger.Error("%s, error is %+v", msg, result.Error)

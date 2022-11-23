@@ -61,8 +61,11 @@ func (c *CommonController) Menu(message *tgBot.Message) {
 	logger.Info("[command|menu] handling, message is %+v", message)
 
 	userID := uint(message.From.ID)
-	// todo 用户注册 message.From.ID
-	// 如果有用户就获取用户的subscription信息, 如果没有就注册用户，并且设置成basic plan
+	subscription := c.subscriptionService.GetByUserID(userID)
+	if subscription.ID == 0 {
+		// 如果有用户就获取用户的subscription信息, 如果没有就注册用户，并且设置成basic plan
+		c.subscriptionService.SetBasicSubscription(userID, true)
+	}
 
 	// 发送onboard 信息
 	userName := message.From.FirstName
