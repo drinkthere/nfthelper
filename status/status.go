@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	indicatorMap  map[int64]model.Indicator
+	indicatorMap  map[uint]model.Indicator
 	indicatorLock sync.RWMutex
 )
 
@@ -24,10 +24,10 @@ const (
 
 // 初始化日志
 func InitStatus() {
-	indicatorMap = make(map[int64]model.Indicator)
+	indicatorMap = make(map[uint]model.Indicator)
 }
 
-func GetIndicator(userID int64) string {
+func GetIndicator(userID uint) string {
 	indicatorLock.RLock()
 	defer indicatorLock.RUnlock()
 	if indicator, ok := indicatorMap[userID]; ok {
@@ -36,7 +36,7 @@ func GetIndicator(userID int64) string {
 	return ""
 }
 
-func SetIndicator(userID int64, indicator string) {
+func SetIndicator(userID uint, indicator string) {
 	indicatorLock.Lock()
 	defer indicatorLock.Unlock()
 

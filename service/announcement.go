@@ -5,7 +5,7 @@ import "nfthelper/model"
 type AnnouncementService struct {
 }
 
-func (c *AnnouncementService) GetByCollectionIDAndUserID(id int64, uid int64) []model.Announcement {
+func (c *AnnouncementService) GetByCollectionIDAndUserID(id uint, uid uint) []model.Announcement {
 	return []model.Announcement{
 		{
 			ID:  1,

@@ -9,22 +9,25 @@ import (
 )
 
 type CommonController struct {
-	TgBotAPI       *tgBot.BotAPI
-	commonService  *service.CommonService
-	paymentService *service.PaymentService
+	TgBotAPI            *tgBot.BotAPI
+	subscriptionService *service.SubscriptionService
+	paymentService      *service.PaymentService
 }
 
 func (c *CommonController) Init(botAPI *tgBot.BotAPI) {
 	c.TgBotAPI = botAPI
-	c.commonService = new(service.CommonService)
+	c.subscriptionService = new(service.SubscriptionService)
 	c.paymentService = new(service.PaymentService)
 }
 
 func (c *CommonController) Start(message *tgBot.Message) {
 	logger.Info("[command|start] handling, message is %+v", message)
-
-	// todo 用户注册 message.From.ID
-	// 如果有用户就获取用户的subscription信息, 如果没有就注册用户，并且设置成basic plan
+	userID := uint(message.From.ID)
+	subscription := c.subscriptionService.GetByUserID(userID)
+	if subscription.ID == 0 {
+		// 如果有用户就获取用户的subscription信息, 如果没有就注册用户，并且设置成basic plan
+		c.subscriptionService.SetBasicSubscription(userID, true)
+	}
 
 	// 发送onboard 信息
 	userName := message.From.FirstName
@@ -51,12 +54,13 @@ func (c *CommonController) Start(message *tgBot.Message) {
 	}
 
 	// 设置indicator
-	status.SetIndicator(message.From.ID, status.Start)
+	status.SetIndicator(userID, status.Start)
 }
 
 func (c *CommonController) Menu(message *tgBot.Message) {
 	logger.Info("[command|menu] handling, message is %+v", message)
 
+	userID := uint(message.From.ID)
 	// todo 用户注册 message.From.ID
 	// 如果有用户就获取用户的subscription信息, 如果没有就注册用户，并且设置成basic plan
 
@@ -85,5 +89,5 @@ func (c *CommonController) Menu(message *tgBot.Message) {
 	}
 
 	// 设置indicator
-	status.SetIndicator(message.From.ID, status.Start)
+	status.SetIndicator(userID, status.Start)
 }

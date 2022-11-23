@@ -27,6 +27,7 @@ func (c *SubscriptionController) Init(botAPI *tgBot.BotAPI) {
 func (c *SubscriptionController) Subscription(message *tgBot.Message) {
 	logger.Info("[command|subscription] handling, message is %s", message.Text)
 
+	userID := uint(message.From.ID)
 	// todo 用户注册 message.From.ID
 	// 如果有用户就获取用户的subscription信息
 	// 发送subscription 信息
@@ -50,11 +51,12 @@ func (c *SubscriptionController) Subscription(message *tgBot.Message) {
 	}
 
 	// 设置indicator
-	status.SetIndicator(message.From.ID, status.Subscription)
+	status.SetIndicator(userID, status.Subscription)
 }
 
 func (c *SubscriptionController) ListSubscription(callbackQuery *tgBot.CallbackQuery) {
-	subscription := c.subscriptionService.GetByUserID(callbackQuery.From.ID)
+	userID := uint(callbackQuery.From.ID)
+	subscription := c.subscriptionService.GetByUserID(userID)
 
 	// current
 	text := fmt.Sprintf("✅ <b>%s</b><i>(Current Plan)</i>\n\n"+
@@ -87,18 +89,19 @@ func (c *SubscriptionController) ListSubscription(callbackQuery *tgBot.CallbackQ
 			return
 		}
 	}
-	status.SetIndicator(callbackQuery.From.ID, status.ListSubscription)
+	status.SetIndicator(userID, status.ListSubscription)
 }
 
 func (c *SubscriptionController) ChooseSubscription(callbackQuery *tgBot.CallbackQuery) {
-	if status.GetIndicator(callbackQuery.From.ID) != status.ListSubscription {
+	userID := uint(callbackQuery.From.ID)
+	if status.GetIndicator(userID) != status.ListSubscription {
 		// 如果不是在添加NFT的时候，用户输入内容无效
 		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, I don't understand. Please use /menu")
 		if _, err := c.TgBotAPI.Send(msg); err != nil {
 			logger.Error("[callback|choose subscription] send message err, %v", err)
 			return
 		}
-		status.SetIndicator(callbackQuery.From.ID, status.Start)
+		status.SetIndicator(userID, status.Start)
 	} else {
 		// 获取subscription
 		subscriptionIDStr := strings.Split(callbackQuery.Data, "`")[1]
@@ -126,19 +129,20 @@ func (c *SubscriptionController) ChooseSubscription(callbackQuery *tgBot.Callbac
 			logger.Error("[command|choose subscription] send message err, %v", err)
 			return
 		}
-		status.SetIndicator(callbackQuery.From.ID, status.ChooseCurrency)
+		status.SetIndicator(userID, status.ChooseCurrency)
 	}
 }
 
 func (c *SubscriptionController) ChooseCurrency(callbackQuery *tgBot.CallbackQuery) {
-	if status.GetIndicator(callbackQuery.From.ID) != status.ChooseCurrency {
+	userID := uint(callbackQuery.From.ID)
+	if status.GetIndicator(userID) != status.ChooseCurrency {
 		// 如果不是在添加NFT的时候，用户输入内容无效
 		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, I don't understand. Please use /menu")
 		if _, err := c.TgBotAPI.Send(msg); err != nil {
 			logger.Error("[callback|choose currency] send message err, %v", err)
 			return
 		}
-		status.SetIndicator(callbackQuery.From.ID, status.Start)
+		status.SetIndicator(userID, status.Start)
 	} else {
 		// 获取subscription
 		paramsStr := strings.Split(callbackQuery.Data, "`")
@@ -167,26 +171,27 @@ func (c *SubscriptionController) ChooseCurrency(callbackQuery *tgBot.CallbackQue
 			logger.Error("[command|choose currency] send message err, %v", err)
 			return
 		}
-		status.SetIndicator(callbackQuery.From.ID, status.ChooseNetwork)
+		status.SetIndicator(userID, status.ChooseNetwork)
 	}
 }
 
 func (c *SubscriptionController) ChooseNetwork(callbackQuery *tgBot.CallbackQuery) {
-	if status.GetIndicator(callbackQuery.From.ID) != status.ChooseNetwork {
+	userID := uint(callbackQuery.From.ID)
+	if status.GetIndicator(userID) != status.ChooseNetwork {
 		// 如果不是在添加NFT的时候，用户输入内容无效
 		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Sorry, I don't understand. Please use /menu")
 		if _, err := c.TgBotAPI.Send(msg); err != nil {
 			logger.Error("[callback|choose network] send message err, %v", err)
 			return
 		}
-		status.SetIndicator(callbackQuery.From.ID, status.Start)
+		status.SetIndicator(userID, status.Start)
 	} else {
 		// 获取subscription
 		paramsStr := strings.Split(callbackQuery.Data, "`")
 		network := paramsStr[1]
 		currency := paramsStr[2]
-		subscriptionID, _ := strconv.ParseInt(paramsStr[3], 10, 64)
-		subscription := c.subscriptionService.GetByID(subscriptionID)
+		subscriptionID, _ := strconv.ParseUint(paramsStr[3], 10, 64)
+		subscription := c.subscriptionService.GetByID(uint(subscriptionID))
 
 		paymentLink := c.paymentService.GeneratePaymentLink(network, currency, subscription.Price)
 		text := fmt.Sprintf("💎️ <b>%s monthly</b>\n\n"+
@@ -201,6 +206,5 @@ func (c *SubscriptionController) ChooseNetwork(callbackQuery *tgBot.CallbackQuer
 			logger.Error("[callback|choose network] send message err, %v", err)
 			return
 		}
-		// status.SetIndicator(callbackQuery.From.ID, status.Payment)
 	}
 }

@@ -24,11 +24,11 @@ func (c *AnnouncementController) Init(botAPI *tgBot.BotAPI) {
 func (c *AnnouncementController) GetByCollectionIDAndUserID(callbackQuery *tgBot.CallbackQuery) {
 	logger.Info("[|subscription] handling, message is %s", callbackQuery.Data)
 
-	userID := callbackQuery.From.ID
+	userID := uint(callbackQuery.From.ID)
 	params := strings.Split(callbackQuery.Data, "`")
-	collectionID, _ := strconv.ParseInt(params[1], 10, 64)
-	collection := c.collectionService.GetByID(collectionID)
-	announcements := c.announcementService.GetByCollectionIDAndUserID(collectionID, userID)
+	collectionID, _ := strconv.ParseUint(params[1], 10, 64)
+	collection := c.collectionService.GetByID(uint(collectionID))
+	announcements := c.announcementService.GetByCollectionIDAndUserID(uint(collectionID), userID)
 
 	for index, announcement := range announcements {
 		text := ""
@@ -43,5 +43,5 @@ func (c *AnnouncementController) GetByCollectionIDAndUserID(callbackQuery *tgBot
 		}
 	}
 	// 设置indicator
-	status.SetIndicator(callbackQuery.From.ID, status.Start)
+	status.SetIndicator(userID, status.Start)
 }

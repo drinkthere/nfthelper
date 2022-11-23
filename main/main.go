@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"nfthelper/config"
+	"nfthelper/database"
 	"nfthelper/logger"
 	"nfthelper/router"
 	"nfthelper/status"
 	"os"
+	"strconv"
 
 	tgBot "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
@@ -65,6 +67,18 @@ func Init() {
 
 	// 初始化Router
 	rt.Init(botAPI)
+
+	// 初始化数据库
+	// 初始化数据库
+	port, _ := strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
+	dbConfig := &database.Config{
+		Host:   os.Getenv("DB_HOST"),
+		Port:   port,
+		User:   os.Getenv("DB_USER"),
+		Pass:   os.Getenv("DB_PASS"),
+		DBName: os.Getenv("DB_NAME"),
+	}
+	database.Init(dbConfig)
 }
 
 func Start() {
