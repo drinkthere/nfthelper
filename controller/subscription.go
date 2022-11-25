@@ -45,17 +45,17 @@ func (c *SubscriptionController) Subscription(message *tgBot.Message) {
 	// 发送inline button
 	inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
 		tgBot.NewInlineKeyboardRow(
-			tgBot.NewInlineKeyboardButtonData("🛎️ Choose subscription plan", "🛎️ Choose subscription plan"),
+			tgBot.NewInlineKeyboardButtonData("Edit NFTs", "Edit NFTs"),
+		),
+		tgBot.NewInlineKeyboardRow(
 			tgBot.NewInlineKeyboardButtonData("🛎️ Choose subscription plan", "🛎️ Choose subscription plan"),
 		),
 	)
 	msg.ReplyMarkup = inlineKeyboard
-
 	if _, err := c.TgBotAPI.Send(msg); err != nil {
 		logger.Error("[command|subscription] send message err, %v", err)
 		return
 	}
-
 	// 设置indicator
 	status.SetIndicator(userID, status.Subscription)
 }
@@ -158,7 +158,7 @@ func (c *SubscriptionController) ChooseCurrency(callbackQuery *tgBot.CallbackQue
 		text := fmt.Sprintf("Choose network for %s coin:", currency)
 		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, text)
 
-		// 获取currency
+		// 获取networks
 		networks := c.commonService.ListNetworks()
 		var currencyKeyboards []tgBot.InlineKeyboardButton
 		for _, network := range networks {

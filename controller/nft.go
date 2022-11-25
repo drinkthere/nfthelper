@@ -262,6 +262,25 @@ func (c *NFTController) EditNFTs(callbackQuery *tgBot.CallbackQuery) {
 
 	userID := uint(callbackQuery.From.ID)
 	collections := c.collectionService.ListByUserID(userID)
+	if len(collections) == 0 {
+		// 如果用户没有订阅NFT，就鼓励用户订阅
+		msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "You haven't add any NFT to your watchlist.\n\n"+
+			"It's a great time to add your first NFT")
+
+		// 发送inline button
+		inlineKeyboard := tgBot.NewInlineKeyboardMarkup(
+			tgBot.NewInlineKeyboardRow(
+				tgBot.NewInlineKeyboardButtonData("Add NFT", "➕ Add"),
+			),
+		)
+		msg.ReplyMarkup = inlineKeyboard
+		if _, err := c.TgBotAPI.Send(msg); err != nil {
+			logger.Error("[callback|edit nfts] send message err, %v", err)
+			return
+		}
+		return
+	}
+
 	// 发送list 信息
 	msg := tgBot.NewMessage(callbackQuery.Message.Chat.ID, "Select NFT to <b>delete</b>:\n\n")
 	msg.ParseMode = tgBot.ModeHTML

@@ -30,7 +30,7 @@ vet:
 	go vet ./...
 
 lint: golangci
-	gofmt -s -w main config controller logger model router
+	gofmt -s -w main config controller logger model router service status
 	$(GOLANGCILINT) -config config/config.toml -exclude vendor/... -formatter default ./...
 
 golangci:

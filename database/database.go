@@ -5,6 +5,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+	"nfthelper/logger"
 	"nfthelper/model/dbmodel"
 )
 
@@ -36,6 +37,7 @@ func Init(cfg *Config) (err error) {
 	// 迁移 schema
 	DB.AutoMigrate(&dbmodel.Subscription{}, &dbmodel.Collection{},
 		&dbmodel.UserSubscription{}, &dbmodel.UserCollection{}, &dbmodel.Announcement{})
+	logger.Debug("initialize data")
 	/*
 		DB.Create([]dbmodel.Announcement{
 			{

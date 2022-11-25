@@ -27,8 +27,7 @@ func (s *SubscriptionService) GetByID(id uint) (subscription dbmodel.Subscriptio
 	msg := fmt.Sprintf("get subscription by id=%d", id)
 	logger.Info(msg)
 
-	// list 订阅方案，不包含basic plan
-	result := database.DB.Where("id=", 1).First(&subscription)
+	result := database.DB.Where("id=?", id).First(&subscription)
 	if result.Error != nil {
 		logger.Error("%s, error is %+v", msg, result.Error)
 		return

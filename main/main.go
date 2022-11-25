@@ -33,12 +33,14 @@ func Init() {
 	logger.InitLogger(cfg.LogPath, logLevel)
 
 	// 加载.env文件
+	logger.Debug("load .env")
 	err := godotenv.Load()
 	if err != nil {
 		panic(err)
 	}
 
 	// 初始化telegram bot
+	logger.Debug("init tg bot")
 	botAPI, err = tgBot.NewBotAPI(os.Getenv("TELEGRAM_API_TOKEN"))
 	if err != nil {
 		panic(err)
@@ -47,6 +49,7 @@ func Init() {
 		botAPI.Debug = true
 	}
 	// 设置menuButton
+	logger.Debug("set menu buttons")
 	commands := tgBot.NewSetMyCommands(
 		tgBot.BotCommand{
 			Command:     "/start",
@@ -63,13 +66,15 @@ func Init() {
 	}
 
 	// 初始化Status
+	logger.Debug("init status")
 	status.InitStatus()
 
 	// 初始化Router
+	logger.Debug("init router")
 	rt.Init(botAPI)
 
 	// 初始化数据库
-	// 初始化数据库
+	logger.Debug("init database")
 	port, _ := strconv.ParseInt(os.Getenv("DB_PORT"), 10, 64)
 	dbConfig := &database.Config{
 		Host:   os.Getenv("DB_HOST"),
@@ -82,11 +87,14 @@ func Init() {
 }
 
 func Start() {
+	logger.Debug("start tg bot")
+
 	// 监听并处理电报消息
 	u := tgBot.NewUpdate(0)
 	u.Timeout = 60
 
 	updates := botAPI.GetUpdatesChan(u)
+	logger.Debug("updates is %+v", updates)
 	for update := range updates {
 		rt.Route(update)
 	}
@@ -97,7 +105,6 @@ func main() {
 		fmt.Printf("Usage: %s config_file\n", os.Args[0])
 		os.Exit(1)
 	}
-
 	Init()
 
 	Start()

@@ -51,6 +51,9 @@ func (r *Router) RouteCallback(callbackQuery *tgBot.CallbackQuery) {
 	data := dataSlice[0]
 	logger.Info("[callback] data is %s", data)
 	switch data {
+	case "🖼 NFT":
+		callbackQuery.Message.From.ID = callbackQuery.From.ID
+		r.nftController.ListNFT(callbackQuery.Message)
 	case "Cancel adding NFT before inputting", "Cancel adding NFT after inputting",
 		"Cancel deleting NFT":
 		r.nftController.Cancel(callbackQuery)
@@ -67,6 +70,9 @@ func (r *Router) RouteCallback(callbackQuery *tgBot.CallbackQuery) {
 		r.nftController.DeleteNFT(callbackQuery)
 	case "Confirm deleting NFT":
 		r.nftController.ConfirmDeleteNFT(callbackQuery)
+	case "🛎️ Subscription":
+		callbackQuery.Message.From.ID = callbackQuery.From.ID
+		r.subscriptionController.Subscription(callbackQuery.Message)
 	case "🛎️ Choose subscription plan", "🛎️ Upgrade subscription plan":
 		r.subscriptionController.ListSubscription(callbackQuery)
 	case "Choose subscription":
